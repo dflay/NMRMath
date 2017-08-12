@@ -15,7 +15,7 @@ namespace NMRMath {
    }; 
 
    //______________________________________________________________________________
-   template < class T >
+   template < typename T >
       T GetMean(std::vector<T> x){
          int N = x.size();
          T sum=0;
@@ -24,7 +24,7 @@ namespace NMRMath {
          return mean;
       }
    //______________________________________________________________________________
-   template < class T >
+   template < typename T >
       T GetRMS(std::vector<T> x){
          T sum_sq = 0;
          const int N = x.size();
@@ -36,7 +36,7 @@ namespace NMRMath {
          return rms;
       }
    //______________________________________________________________________________
-   template < class T >
+   template < typename T >
       T GetVariance(std::vector<T> x){
          int N = x.size();
          T mean = GetMean<T>(x);
@@ -48,14 +48,14 @@ namespace NMRMath {
          return var;
       }
    //______________________________________________________________________________
-   template < class T >
+   template < typename T >
       T GetStandardDeviation(std::vector<T> x){
          T var   = GetVariance<T>(x);
          T stdev = sqrt(var);
          return stdev;
       }
    //______________________________________________________________________________
-   template < class T >
+   template < typename T >
       T GetStandardErrorOfTheMean(std::vector<T> x){
          const int N = x.size();
          T sd   = GetStandardDeviation<T>(x);
@@ -63,7 +63,7 @@ namespace NMRMath {
          return sdom;
       }
    //______________________________________________________________________________
-   template < class T1, class T2 >
+   template < typename T1, typename T2 >
       T2 GetCovariance(std::vector<T1> x,std::vector<T2> y){
          T1 mean_x = GetMean<T1>(x);
          T2 mean_y = GetMean<T2>(y);
@@ -78,7 +78,7 @@ namespace NMRMath {
          return cov;
       }
    //______________________________________________________________________________
-   template < class T1, class T2 >
+   template < typename T1, typename T2 >
       int LeastSquaresFitting(std::vector<T1> x,std::vector<T2> y,T2 &a,T2 &b,T2 &r){
          // linear regression to find slope b and y-intercept a of 
          // f(x) = a + bx 
@@ -115,14 +115,14 @@ namespace NMRMath {
          return rc;
       }
    //______________________________________________________________________________
-   template < class T1, class T2 >
+   template < typename T1, typename T2 >
       T2 LinearInterpolation(T1 x,T1 x0,T2 y0,T1 x1,T2 y1){
 	 T2 b = (T2)(x-x0)/(T2)(x1-x0);
 	 T2 y = y0 + b*(y1-y0);
 	 return y;
       }
    //______________________________________________________________________________
-   template <class T1,class T2>
+   template <typename T1,typename T2>
    T1 GetTimeOfCrossing(int verbosity,int method,std::vector<T1> X,std::vector<T2> Y,
                         T1 t_current,T2 v_current,
                         T1 t_next   ,T2 v_next){
@@ -191,7 +191,7 @@ namespace NMRMath {
       return t0;
    }
    //______________________________________________________________________________
-   template < class T1, class T2> 
+   template < typename T1, typename T2> 
    int StoreData(int verbosity,int i,int NPTS,
                  std::vector<T1> time,std::vector<T2> voltage,
                  std::vector<T1> &X,std::vector<T2> &Y){
@@ -263,7 +263,7 @@ namespace NMRMath {
 
 
    //______________________________________________________________________________
-   template < class T1, class T2 >
+   template < typename T1, typename T2 >
    int CountZeroCrossings(int verbosity,int method,int NPTS,int step,
                           bool UseTimeRange,double tMin,double tMax,
                           std::vector<T1> time,std::vector<T2> voltage, 
