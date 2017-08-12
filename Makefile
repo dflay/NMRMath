@@ -13,9 +13,9 @@ INCINSTALLDIR=$(PREFIX)/include/g2field
 DEPS=$(INC_DIR)/NMRMath.hh
 # CFLAGS = -I$(INC_DIR) -I$(DRIVER_INC_DIR) -Wl,-rpath,$(LIB_DIR)
 CFLAGS = -I$(INC_DIR) -I$(DRIVER_INC_DIR) -Wall
-LIBFLAGS = -L$(LIB_DIR) -lNMRMath
+LIBFLAGS = -L$(LIB_DIR) 
 
-all: $(BIN_DIR)/Test $(LIB_DIR)/libNMRMath.so 
+all: $(BIN_DIR)/Test  
 
 # $(LIB_DIR)/libNMRMath.so: $(BUILD_DIR)/NMRMath.o 
 # 	$(CXX) -shared -fPIC -o $@ $^ 
