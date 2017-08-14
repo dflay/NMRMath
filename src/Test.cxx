@@ -2,7 +2,8 @@
 
 #include <cstdlib> 
 #include <iostream> 
-#include <vector> 
+#include <vector>
+#include <iomanip>      // std::setprecision
 
 #include "NMRMath.hh"
 
@@ -41,7 +42,7 @@ int main(){
    std::vector<unsigned long> time; 
    std::vector<double> voltage; 
 
-   double inFreq = 10E+3; 
+   double inFreq = 30E+3; 
    double SAMPLE_FREQ = 10E+6;
    double omega = 2.*acos(-1)*inFreq;
    double ampl = 1.0; 
@@ -49,26 +50,26 @@ int main(){
    unsigned long sample_num; 
    double arg_v,arg_t;
  
-   const int NPTS = 1E+5; 
+   const int NPTS = 1E+6; 
    for (int i=0;i<NPTS;i++) {
       sample_num = i;     
-      arg_t = (double)(i)/SAMPLE_FREQ;
-      arg_v = ampl*sin(omega*arg_t);
+      arg_t      = (double)(i)/SAMPLE_FREQ;
+      arg_v      = ampl*sin(omega*arg_t);
       time.push_back(sample_num);  
       voltage.push_back(arg_v); 
       // std::cout << i << "  " << arg_t << "  " << arg_v << std::endl; 
    }
 
-   int verbosity = 5;
-   int method    = NMRMath::kLinearInterpolation;
+   int verbosity = 0;
+   int method    = NMRMath::kLeastSquares;
 
    double N_exp  = SAMPLE_FREQ/inFreq;       // number of points for one period 
    int step_size = (int)( (1./16.)*N_exp );  // skip 1/16 of a period 
    int npts      = step_size/2;              // use step_size/2 
 
-   bool UseTimeRange = false; 
+   bool UseTimeRange = true; 
    unsigned long tMin = 0;
-   unsigned long tMax = 1;
+   unsigned long tMax = 0.75*NPTS;
 
    std::vector<unsigned long> tCross;
    std::vector<double> vCross; 
@@ -79,8 +80,12 @@ int main(){
    rc = CalculateFrequencyZC<unsigned long,double>(tCross,outFreq);
    outFreq *= SAMPLE_FREQ;  // because the time is sample number, we have to convert to Hz  
 
-   std::cout << "Input frequency:  " << inFreq << std::endl; 
-   std::cout << "Output frequency: " << outFreq << std::endl; 
+   char inf[20],outf[20]; 
+   sprintf(inf ,"%.5lf",inFreq );
+   sprintf(outf,"%.5lf",outFreq);
+
+   std::cout << "Input frequency:  " << inf  << std::endl; 
+   std::cout << "Output frequency: " << outf << std::endl; 
  
    return 0;
 }
