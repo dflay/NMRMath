@@ -7,13 +7,12 @@
 #include <math.h>
 
 namespace NMRMath { 
-
+   //______________________________________________________________________________
    enum zcType{
       kMidpoint            = 1,
       kLinearInterpolation = 2,
       kLeastSquares        = 3
    }; 
-
    //______________________________________________________________________________
    template < typename T >
       T GetMean(std::vector<T> x){
@@ -115,10 +114,10 @@ namespace NMRMath {
          return rc;
       }
    //______________________________________________________________________________
-   template < typename T1, typename T2 >
-      T2 LinearInterpolation(T1 x,T1 x0,T2 y0,T1 x1,T2 y1){
-	 T2 b = (T2)(x-x0)/(T2)(x1-x0);
-	 T2 y = y0 + b*(y1-y0);
+   template < typename TA, typename TB >
+      TB LinearInterpolation(TA x,TA x0,TB y0,TA x1,TB y1){
+	 TB b = (TB)(x-x0)/(TB)(x1-x0);
+	 TB y = y0 + b*(y1-y0);
 	 return y;
       }
    //______________________________________________________________________________
@@ -141,7 +140,7 @@ namespace NMRMath {
          t0 = (t_current + t_next)/2.;
       } else if (method==kLinearInterpolation){
          // method 2: get time at V = 0, linear interpolation  
-         t0 = LinearInterpolation<T2,T1>(v0,v_current,v_next,t_current,t_next);
+         t0 = LinearInterpolation<T2,T1>(v0,v_current,t_current,v_next,t_next);
       } else if(method==kLeastSquares){
          // method 3: least squares fit to neighboring points
          // to find fit parameters a and b in f(x) = a + bx 
@@ -160,7 +159,7 @@ namespace NMRMath {
                                                                       << "t_max = " << X[SIZE-1] << "\t" 
                                                                       << "t0 = "    << t0        << std::endl;
             }
-            t0 = LinearInterpolation<T2,T1>(v0,v_current,v_next,t_current,t_next);
+	    t0 = LinearInterpolation<T2,T1>(v0,v_current,t_current,v_next,t_next);
             if(verbosity>=3) {
                std::cout << "[NMRMath::GetTimeOfCrossing]: linear interpolation: t_current = " << t_current << "\t"
                          << " t_next = " << t_next << "\t" << "t0 = " << t0 << std::endl;
@@ -210,8 +209,8 @@ namespace NMRMath {
          end   = i + 3;
          if(verbosity>=3){
             std::cout << "[NMRMath::StoreData]: Voltage at zero crossing is zero!" << std::endl;
-            std::cout << "                              start = " << start << std::endl;
-            std::cout << "                              end   = " << end   << std::endl;
+            std::cout << "                      start = " << start << std::endl;
+            std::cout << "                      end   = " << end   << std::endl;
          }
       }
 
@@ -221,16 +220,16 @@ namespace NMRMath {
          end   = i + 6;
          if(verbosity>=3){
             std::cout << "[NMRMath::StoreData]: Invalid start point!  Setting to index = " << i << std::endl;
-            std::cout << "                              start = " << start << std::endl;
-            std::cout << "                              end   = " << end   << std::endl;
+            std::cout << "                      start = " << start << std::endl;
+            std::cout << "                      end   = " << end   << std::endl;
          }
       }else if(start==0){
          start = 0;
          end   = 7;
          if(verbosity>=3){
             std::cout << "[NMRMath::StoreData]: Starting at index = " << start << std::endl;
-            std::cout << "                              start = " << start << std::endl;
-            std::cout << "                              end   = " << end   << std::endl;
+            std::cout << "                      start = " << start << std::endl;
+            std::cout << "                      end   = " << end   << std::endl;
          }
       }
 
@@ -240,8 +239,8 @@ namespace NMRMath {
       }
       int k=0;
       for(int j=start;j<end;j++){
-	 X[k]  = time[j]; // aPulse->GetTime(j);
-	 Y[k]  = voltage[j]; // aPulse->GetVoltage(j);
+	 X.push_back(time[j]); 
+	 Y.push_back(voltage[j]);
 	 k++;
       }
 
@@ -251,21 +250,18 @@ namespace NMRMath {
 	 NPTSUseable = k;
 	 if(verbosity>=3){
 	    std::cout << "[NMRMath::StoreData]: WARNING!  Do not have the expected number of data points! " << std::endl;
-	    std::cout << "                              k    = " << k    << std::endl;
-	    std::cout << "                              NPTS = " << NPTS << std::endl;
-	    std::cout << "                              Using k data points in fit..." << std::endl;
+	    std::cout << "                      k    = " << k    << std::endl;
+	    std::cout << "                      NPTS = " << NPTS << std::endl;
+	    std::cout << "                      Using k data points in fit..." << std::endl;
 	 }
       }
 
       return NPTSUseable;
-
    } 
-
-
    //______________________________________________________________________________
    template < typename T1, typename T2 >
    int CountZeroCrossings(int verbosity,int method,int NPTS,int step,
-                          bool UseTimeRange,double tMin,double tMax,
+                          bool UseTimeRange,T1 tMin,T1 tMax,
                           std::vector<T1> time,std::vector<T2> voltage, 
                           std::vector<T1> &tCross,std::vector<T2> &vCross){
       // count zero crossings  
@@ -289,27 +285,21 @@ namespace NMRMath {
       int cntr        = 0;
       int cntr_prev   = 0;
 
-      T2 v0           = 0;
-      T2 target       = 0;
-      T2 t0           = 0;
+      T1 t0=0,t_current=0,t_previous=0,t_next=0;
 
-      T1 t_current=0,t_previous=0,t_next=0;
-
+      T2 v0=0,target=0;
       T2 v_prod=0,delta_v=0;
       T2 v_current=0,v_previous=0,v_next=0;
-      T2 v_current_err=0,v_next_err=0,v_previous_err=0;
 
       std::vector<T1> X; 
       std::vector<T2> Y; 
 
       int i=0;
       do { 
-         t_current     = time[i];      // aPulse->GetTime(i);
-         t_next        = time[i+1];    // aPulse->GetTime(i+1);
-         v_current     = voltage[i];   // aPulse->GetVoltage(i);
-         v_next        = voltage[i+1]; // aPulse->GetVoltage(i+1);
-         v_current_err = 0;            // FIXME: voltage errors? 
-         v_next_err    = 0;            // FIXME: voltage errors?
+         t_current     = time[i];      
+         t_next        = time[i+1];    
+         v_current     = voltage[i];   
+         v_next        = voltage[i+1]; 
          v_prod        = v_current*v_next;
          if (v_prod>target) {
             // positive number, no crossing
@@ -324,7 +314,7 @@ namespace NMRMath {
                   delta_v = fabs(v_current-v_next); 
                   // fill vectors for fit method 
                   NPTSUseable = StoreData<T1,T2>(verbosity,i,NPTS,time,voltage,X,Y); 
-                  t0 = GetTimeOfCrossing<T1,T2>(verbosity,method,NPTSUseable,X,Y,t_current,v_current,t_next,v_next); 
+                  t0 = GetTimeOfCrossing<T1,T2>(verbosity,method,X,Y,t_current,v_current,t_next,v_next); 
                   // fill vectors 
                   tCross.push_back(t0); 
                   vCross.push_back(v0); 
@@ -335,7 +325,7 @@ namespace NMRMath {
                delta_v = fabs(v_current-v_next); 
                // fill vectors for fit method 
                NPTSUseable = StoreData<T1,T2>(verbosity,i,NPTS,time,voltage,X,Y); 
-               t0 = GetTimeOfCrossing<T1,T2>(verbosity,method,NPTSUseable,X,Y,t_current,v_current,t_next,v_next); 
+               t0 = GetTimeOfCrossing<T1,T2>(verbosity,method,X,Y,t_current,v_current,t_next,v_next); 
                // fill vectors 
                tCross.push_back(t0); 
                vCross.push_back(v0); 
@@ -370,7 +360,6 @@ namespace NMRMath {
             cntr_prev      = cntr; 
             t_previous     = t_current;
             v_previous     = v_current;
-            v_previous_err = v_current_err;
          }
       } while ( i<(N-1) ); 
 
