@@ -240,6 +240,8 @@ namespace NMRMath {
       // t_current,v_current, etc: (time,voltage) for midpoint method 
       // X,Y = (time,voltage) to use in the fitting procedure if doing linear interpolation or least squares 
 
+      // FIXME: We're systematically low by 1 tick mark when using T1 = unsigned int. 
+
       int ret_val=0;
       T1 t0=0;
       T2 v0=0,a=0,b=0,r=0;
