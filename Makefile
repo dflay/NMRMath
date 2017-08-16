@@ -13,7 +13,7 @@ INCINSTALLDIR=$(PREFIX)/include/g2field
 DEPS=$(INC_DIR)/NMRMath.hh
 # CFLAGS = -I$(INC_DIR) -I$(DRIVER_INC_DIR) -Wl,-rpath,$(LIB_DIR)
 CFLAGS = -I$(INC_DIR) -I$(DRIVER_INC_DIR) -Wall
-LIBFLAGS = -L$(LIB_DIR) 
+LIBFLAGS = -L$(LIB_DIR) -lm  
 
 all: $(BIN_DIR)/Test  
 

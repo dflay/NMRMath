@@ -2,99 +2,98 @@
 
 #include <cstdlib> 
 #include <iostream> 
+#include <fstream> 
 #include <vector>
 #include <iomanip>      // std::setprecision
 
 #include "NMRMath.hh"
 
-template < typename T1, typename T2 > int CalculateFrequencyZC(std::vector<T1> tCross,T2 &freq_full_range); 
+template < typename T1, typename T2 > int CalculateFrequencyZC(int inputUnits,double SampleFreq,std::vector<T1> tCross,T2 &freq_full_range); 
+template < typename T1, typename T2 > int PrintToFile(std::string outpath,std::vector<T1> x,std::vector<T2> y); 
 
 int main(){
 
-   std::vector<double> A;
-   A.push_back(6);
-   A.push_back(7);
-   A.push_back(9);
-   const int N = A.size();
-
-   // std::cout << "Vector contains: " << std::endl;
-   // for(int i=0;i<N;i++) std::cout << A[i] << std::endl;
-
-   double mean = NMRMath::GetMean<double>(A);
-   std::cout << "mu = " << mean << std::endl;
-
-   double stdev = NMRMath::GetStandardDeviation<double>(A);
-   std::cout << "sigma = " << stdev << std::endl;
-
-   // try interpolation 
-   std::vector<unsigned long> B; 
-   B.push_back(1000); 
-   B.push_back(1400); 
-   B.push_back(3000); 
-   // for(int i=0;i<N;i++) std::cout << time[i] << std::endl;
-
-   unsigned long myTime = B[0] + 200;
-
-   double A_pt = NMRMath::LinearInterpolation<unsigned long,double>(myTime,B[0],A[0],B[1],A[1]);
-   std::cout << myTime << " " << A_pt << std::endl;
-
-   // now try zero crossings 
    std::vector<unsigned long> time; 
    std::vector<double> voltage; 
 
-   double inFreq = 30E+3; 
+   double inFreq      = 30E+3; 
    double SAMPLE_FREQ = 10E+6;
-   double omega = 2.*acos(-1)*inFreq;
-   double ampl = 1.0; 
+   double omega       = 2.*acos(-1)*inFreq;
+   double ampl        = 1.0; 
 
    unsigned long sample_num; 
    double arg_v,arg_t;
  
-   const int NPTS = 1E+6; 
+   const int NPTS = 1E+6;
    for (int i=0;i<NPTS;i++) {
       sample_num = i;     
       arg_t      = (double)(i)/SAMPLE_FREQ;
       arg_v      = ampl*sin(omega*arg_t);
       time.push_back(sample_num);  
       voltage.push_back(arg_v); 
-      // std::cout << i << "  " << arg_t << "  " << arg_v << std::endl; 
    }
 
+   std::string prefix  = "/Users/dflay/work/E989/NMRMath/ana/"; 
+   std::string outpath = prefix + "test-data.csv"; 
+   PrintToFile<unsigned long,double>(outpath,time,voltage);
+
    int verbosity = 0;
-   int method    = NMRMath::kLeastSquares;
+   int method    = NMRMath::kMidpoint;
 
-   double N_exp  = SAMPLE_FREQ/inFreq;       // number of points for one period 
-   int step_size = (int)( (1./16.)*N_exp );  // skip 1/16 of a period 
-   int npts      = step_size/2;              // use step_size/2 
-
-   bool UseTimeRange = true; 
+   bool UseTimeRange  = true; 
    unsigned long tMin = 0;
    unsigned long tMax = 0.75*NPTS;
 
    std::vector<unsigned long> tCross;
    std::vector<double> vCross; 
 
-   int rc = NMRMath::CountZeroCrossings(verbosity,method,npts,step_size,UseTimeRange,tMin,tMax,time,voltage,tCross,vCross);
+   const int NC = 1E+5; 
+   tCross.reserve(NC);
+   vCross.reserve(NC);
+   for(int i=0;i<NC;i++){
+      tCross.push_back(0); 
+      vCross.push_back(-1); 
+   }
 
+   int numCrossings = NMRMath::CountZeroCrossings(verbosity,method,SAMPLE_FREQ,inFreq,UseTimeRange,tMin,tMax,time,voltage,tCross,vCross);
+
+   std::cout << "Found " << numCrossings << " zero crossings " << std::endl; 
+
+   for(int i=0;i<numCrossings;i++) std::cout << tCross[i] << std::endl; 
+
+   // clean up invalid points from initialization 
+   for(int i=NC-1;i>=numCrossings;i--){
+      tCross.pop_back();
+      vCross.pop_back();
+   }
+
+   std::string outpath_zc = prefix + "zc-calc.csv"; 
+   PrintToFile<unsigned long,double>(outpath_zc,tCross,vCross); 
+ 
    double outFreq=0; 
-   rc = CalculateFrequencyZC<unsigned long,double>(tCross,outFreq);
-   outFreq *= SAMPLE_FREQ;  // because the time is sample number, we have to convert to Hz  
+   int rc = CalculateFrequencyZC<unsigned long,double>(NMRMath::kNumSamples,SAMPLE_FREQ,tCross,outFreq);
 
-   char inf[20],outf[20]; 
-   sprintf(inf ,"%.5lf",inFreq );
-   sprintf(outf,"%.5lf",outFreq);
+   char inf[20],outf[20],diff[20];
+
+   double df = (outFreq-inFreq)/0.06179;
+ 
+   sprintf(inf ,"%.5lf Hz",inFreq );
+   sprintf(outf,"%.5lf Hz",outFreq);
+   sprintf(diff,"%.5lf ppb",df);
 
    std::cout << "Input frequency:  " << inf  << std::endl; 
    std::cout << "Output frequency: " << outf << std::endl; 
+   std::cout << "Difference:       " << diff << std::endl; 
  
    return 0;
 }
 //______________________________________________________________________________
 template < typename T1, typename T2 > 
-int CalculateFrequencyZC(std::vector<T1> tCross,T2 &freq_full_range){
+int CalculateFrequencyZC(int inputUnits,double SampleFreq,std::vector<T1> tCross,T2 &freq_full_range){
 
    int rc = 0;
    int NumCrossings = tCross.size();
+   std::cout << "Number of crossings = " << NumCrossings << std::endl; 
 
    if(NumCrossings==0) std::cout << "[NMRZeroCrossing::CalculateFrequencies]: NumCrossings is zero!" << std::endl;
 
@@ -116,5 +115,28 @@ int CalculateFrequencyZC(std::vector<T1> tCross,T2 &freq_full_range){
    // compute the frequency  
    freq_full_range = NC/dt;
 
+   if(inputUnits==NMRMath::kNumSamples) {
+      freq_full_range *= SampleFreq;
+   }
+
    return rc;
+}
+//______________________________________________________________________________
+template < typename T1, typename T2 > 
+int PrintToFile(std::string outpath,std::vector<T1> x,std::vector<T2> y){
+
+   const int N = x.size();
+
+   std::ofstream outfile;
+   outfile.open(outpath); 
+   if ( outfile.fail() ) {
+      std::cout << "Cannot write the data to the file: " << outpath << std::endl;
+      return 1; 
+   } else { 
+      for (int i=0;i<N;i++) outfile << x[i] << "," << y[i] << std::endl;
+      outfile.close();
+      std::cout << "The data has been written to the file: " << outpath << std::endl;
+   }
+
+   return 0;  
 }

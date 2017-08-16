@@ -14,6 +14,14 @@ namespace NMRMath {
       kLeastSquares        = 3
    }; 
    //______________________________________________________________________________
+   enum inputUnits{
+      kNumSamples   = 1,
+      kSeconds      = 2,
+      kMilliSeconds = 3,
+      kMicroSeconds = 4,
+      kNanoSeconds  = 5
+   }; 
+   //______________________________________________________________________________
    template < typename T >
       T GetMean(std::vector<T> x){
          int N = x.size();
@@ -24,9 +32,28 @@ namespace NMRMath {
       }
    //______________________________________________________________________________
    template < typename T >
+      T GetMean(const int N,std::vector<T> x){
+         T sum=0;
+         for(int i=0;i<N;i++) sum += x[i];
+         T mean = sum/( (T)N );
+         return mean;
+      }
+   //______________________________________________________________________________
+   template < typename T >
       T GetRMS(std::vector<T> x){
          T sum_sq = 0;
          const int N = x.size();
+         for(int i=0;i<N;i++){
+            sum_sq += pow(x[i],2.);
+         }
+         T arg = sum_sq/( (T)N );
+         T rms = sqrt(arg);
+         return rms;
+      }
+   //______________________________________________________________________________
+   template < typename T >
+      T GetRMS(const int N,std::vector<T> x){
+         T sum_sq = 0;
          for(int i=0;i<N;i++){
             sum_sq += pow(x[i],2.);
          }
@@ -48,8 +75,26 @@ namespace NMRMath {
       }
    //______________________________________________________________________________
    template < typename T >
+      T GetVariance(const int N,std::vector<T> x){
+         T mean = GetMean<T>(N,x);
+         T sum=0;
+         for(int i=0;i<N;i++){
+            sum += pow(x[i]-mean,2);
+         }
+         T var   = sum/( (T)N );
+         return var;
+      }
+   //______________________________________________________________________________
+   template < typename T >
       T GetStandardDeviation(std::vector<T> x){
          T var   = GetVariance<T>(x);
+         T stdev = sqrt(var);
+         return stdev;
+      }
+   //______________________________________________________________________________
+   template < typename T >
+      T GetStandardDeviation(const int N,std::vector<T> x){
+         T var   = GetVariance<T>(N,x);
          T stdev = sqrt(var);
          return stdev;
       }
@@ -58,6 +103,13 @@ namespace NMRMath {
       T GetStandardErrorOfTheMean(std::vector<T> x){
          const int N = x.size();
          T sd   = GetStandardDeviation<T>(x);
+         T sdom = sd/sqrt( (T)N );
+         return sdom;
+      }
+   //______________________________________________________________________________
+   template < typename T >
+      T GetStandardErrorOfTheMean(const int N,std::vector<T> x){
+         T sd   = GetStandardDeviation<T>(N,x);
          T sdom = sd/sqrt( (T)N );
          return sdom;
       }
@@ -78,6 +130,20 @@ namespace NMRMath {
       }
    //______________________________________________________________________________
    template < typename T1, typename T2 >
+      T2 GetCovariance(const int N,std::vector<T1> x,std::vector<T2> y){
+         T1 mean_x = GetMean<T1>(N,x);
+         T2 mean_y = GetMean<T2>(N,y);
+         T2 sum=0,diff_x=0,diff_y=0;
+         for (int i=0;i<N;i++) {
+            diff_x = (T2)(x[i]-mean_x);
+            diff_y = y[i]-mean_y;
+            sum   += diff_x*diff_y;
+         }
+         T2 cov = sum/( (T2)N );
+         return cov;
+      }
+   //______________________________________________________________________________
+   template < typename T1, typename T2 >
       int LeastSquaresFitting(std::vector<T1> x,std::vector<T2> y,T2 &a,T2 &b,T2 &r){
          // linear regression to find slope b and y-intercept a of 
          // f(x) = a + bx 
@@ -85,12 +151,48 @@ namespace NMRMath {
          int rc=0;
          double num=0,rsq=0;
 
-         int N     = x.size();
+         const int N = x.size(); 
          T1 mean_x = GetMean<T1>(x);
          T2 mean_y = GetMean<T2>(y);
          T1 var_x  = GetVariance<T1>(x);
          T2 var_y  = GetVariance<T2>(y);
          T2 cov_xy = GetCovariance<T1,T2>(x,y);
+
+         T1 ss_xx = ( (T1)N )*var_x;
+         T2 ss_yy = ( (T2)N )*var_y;
+         T2 ss_xy = ( (T2)N )*cov_xy;
+
+         T2 den = (T2)(ss_xx)*ss_yy;
+         if(den==0){
+            // singular matrix. can't solve the problem.
+            a   = 0;
+            b   = 0;
+            r   = 0;
+            rc  = 1;
+         }else{
+            b   = cov_xy/var_x;
+            a   = mean_y - b*mean_x;
+            num = ss_xy*ss_xy;
+            rsq = num/den;
+            r   = sqrt(rsq);
+         }
+
+         return rc;
+      }
+   //______________________________________________________________________________
+   template < typename T1, typename T2 >
+      int LeastSquaresFitting(const int N,std::vector<T1> x,std::vector<T2> y,T2 &a,T2 &b,T2 &r){
+         // linear regression to find slope b and y-intercept a of 
+         // f(x) = a + bx 
+
+         int rc=0;
+         double num=0,rsq=0;
+
+         T1 mean_x = GetMean<T1>(N,x);
+         T2 mean_y = GetMean<T2>(N,y);
+         T1 var_x  = GetVariance<T1>(N,x);
+         T2 var_y  = GetVariance<T2>(N,y);
+         T2 cov_xy = GetCovariance<T1,T2>(N,x,y);
 
          T1 ss_xx = ( (T1)N )*var_x;
          T2 ss_yy = ( (T2)N )*var_y;
@@ -122,14 +224,12 @@ namespace NMRMath {
       }
    //______________________________________________________________________________
    template <typename T1,typename T2>
-   T1 GetTimeOfCrossing(int verbosity,int method,std::vector<T1> X,std::vector<T2> Y,
+   T1 GetTimeOfCrossing(int verbosity,int method,const int NN,std::vector<T1> X,std::vector<T2> Y,
                         T1 t_current,T2 v_current,
                         T1 t_next   ,T2 v_next){
       // find the time of the zero crossing 
       // t_current,v_current, etc: (time,voltage) for midpoint method 
       // X,Y = (time,voltage) to use in the fitting procedure if doing linear interpolation or least squares 
-
-      const int SIZE = X.size();
 
       int ret_val=0;
       T1 t0=0;
@@ -144,19 +244,24 @@ namespace NMRMath {
       } else if(method==kLeastSquares){
          // method 3: least squares fit to neighboring points
          // to find fit parameters a and b in f(x) = a + bx 
-         ret_val = LeastSquaresFitting<T1,T2>(X,Y,a,b,r);
-         if(b!=0){
-            t0 = (T1)( -a/b );
-         }else{
-            t0 = 0;
-         }
+         ret_val = LeastSquaresFitting<T1,T2>(NN,X,Y,a,b,r);
+         if (ret_val!=0) {
+	    std::cout << "[NMRMath::GetTimeOfCrossing]: ERROR!  Least squares fit failed!" << std::endl;
+	    t0 = -1;
+	 } else {
+	    if(b!=0){
+	       t0 = (T1)( -a/b );
+	    }else{
+	       t0 = 0;
+	    }
+	 }
          // make sure t0 is bound properly 
-         if(t0<X[0] || t0>X[SIZE-1]){
+         if(t0<X[0] || t0>X[NN-1]){
             if(verbosity>=3){
                std::cout << "[NMRMath::GetTimeOfCrossing]: ERROR!  t0 is out of bounds!  ";
                std::cout << "  Using linear interpolation instead..." << std::endl;
                std::cout << "                              t_min = "  << X[0]       << "\t" 
-                                                                      << "t_max = " << X[SIZE-1] << "\t" 
+                                                                      << "t_max = " << X[NN-1] << "\t" 
                                                                       << "t0 = "    << t0        << std::endl;
             }
 	    t0 = LinearInterpolation<T2,T1>(v0,v_current,t_current,v_next,t_next);
@@ -180,7 +285,7 @@ namespace NMRMath {
             if(method==kLeastSquares){
                std::cout << "                              offset = " << a << std::endl;
                std::cout << "                              slope  = " << b << std::endl;
-               for(int i=0;i<SIZE;i++){
+               for(int i=0;i<NN;i++){
         	  std::cout << "                              t = " << X[i] << "\t" << "v = " << Y[i] << std::endl;
                }
             }
@@ -188,6 +293,27 @@ namespace NMRMath {
       }
 
       return t0;
+   }
+   //______________________________________________________________________________
+   template < typename T1, typename T2 > 
+   int InitializeVectors(size_t N,std::vector<T1> &X,std::vector<T2> &Y){
+      X.resize(N);
+      Y.resize(N);
+      for(size_t i=0;i<N;i++){
+	 X.emplace_back(0);
+	 Y.emplace_back(0);
+      }
+      return 0;
+   }
+   //______________________________________________________________________________
+   template < typename T1, typename T2 > 
+   int ClearVectors(std::vector<T1> &X,std::vector<T2> &Y){
+      const int N = X.size(); 
+      for(int i=0;i<N;i++){
+	 X[i] = 0;
+	 Y[i] = 0;
+      }
+      return 0;
    }
    //______________________________________________________________________________
    template < typename T1, typename T2> 
@@ -239,8 +365,8 @@ namespace NMRMath {
       }
       int k=0;
       for(int j=start;j<end;j++){
-	 X.push_back(time[j]); 
-	 Y.push_back(voltage[j]);
+	 X[k] = time[j]; 
+	 Y[k] = voltage[j];
 	 k++;
       }
 
@@ -260,28 +386,32 @@ namespace NMRMath {
    } 
    //______________________________________________________________________________
    template < typename T1, typename T2 >
-   int CountZeroCrossings(int verbosity,int method,int NPTS,int step,
+   int CountZeroCrossings(int verbosity,int method,double SampleFreq,double ExpFreq,
                           bool UseTimeRange,T1 tMin,T1 tMax,
                           std::vector<T1> time,std::vector<T2> voltage, 
                           std::vector<T1> &tCross,std::vector<T2> &vCross){
       // count zero crossings  
       // verbosity:    how much info is printed to screen
       // method:       midpoint, linear interpolation, least squares 
-      // NPTS:         number of points to use in zc counting 
       // UseTimeRange: use a specific time range specified by tMin, tMax 
       // time:         time vector 
       // voltage:      voltage vector 
       // tCross:       time of zero crossing 
       // vCross:       voltage of zero crossing (should be zero) 
 
-      if(verbosity>=3) std::cout << "[NMRMath]: Counting zero crossings..." << std::endl;
+      double N_exp  = SampleFreq/ExpFreq;       // number of points for one period 
+      int step_size = (int)( (1./16.)*N_exp );  // skip 1/16 of a period 
+      int NPTS      = step_size/2;              // use step_size/2 
+      
+      // NPTS:         number of points to use in zc counting (in linear fit)  
+      // step_size:    number of points to to skip after a zero crossing is found     
 
-      // NPTS = number of points for linear fit
-      // Step = how many points to skip ahead in counting zero crossings 
+      if(verbosity>=3) std::cout << "[NMRMath]: Counting zero crossings..." << std::endl;
 
       int NPTSUseable = 0;
       const int N     = time.size();
 
+      // for counting how many zero crossings we have 
       int cntr        = 0;
       int cntr_prev   = 0;
 
@@ -291,8 +421,11 @@ namespace NMRMath {
       T2 v_prod=0,delta_v=0;
       T2 v_current=0,v_previous=0,v_next=0;
 
+      int index=0;  // vector index
       std::vector<T1> X; 
       std::vector<T2> Y; 
+
+      InitializeVectors<T1,T2>(NPTS,X,Y); 
 
       int i=0;
       do { 
@@ -314,10 +447,11 @@ namespace NMRMath {
                   delta_v = fabs(v_current-v_next); 
                   // fill vectors for fit method 
                   NPTSUseable = StoreData<T1,T2>(verbosity,i,NPTS,time,voltage,X,Y); 
-                  t0 = GetTimeOfCrossing<T1,T2>(verbosity,method,X,Y,t_current,v_current,t_next,v_next); 
+                  t0 = GetTimeOfCrossing<T1,T2>(verbosity,method,NPTSUseable,X,Y,t_current,v_current,t_next,v_next); 
                   // fill vectors 
-                  tCross.push_back(t0); 
-                  vCross.push_back(v0); 
+                  tCross[index] = t0; 
+                  vCross[index] = v0; 
+		  index++;  
                }
             } else {
                // don't use the fit range
@@ -325,12 +459,15 @@ namespace NMRMath {
                delta_v = fabs(v_current-v_next); 
                // fill vectors for fit method 
                NPTSUseable = StoreData<T1,T2>(verbosity,i,NPTS,time,voltage,X,Y); 
-               t0 = GetTimeOfCrossing<T1,T2>(verbosity,method,X,Y,t_current,v_current,t_next,v_next); 
+               t0 = GetTimeOfCrossing<T1,T2>(verbosity,method,NPTSUseable,X,Y,t_current,v_current,t_next,v_next); 
                // fill vectors 
-               tCross.push_back(t0); 
-               vCross.push_back(v0); 
+               tCross[index] = t0; 
+               vCross[index] = v0;
+               index++;  
             }
+            // std::cout << " CROSSING " << cntr << std::endl; 
             // check the t0 
+            // std::cout << "Checking the crossing" << std::endl; 
             if(t0<0 || delta_v>0.100){   // we shouldn't see a 100 mV jump during the zero crossing 
                if(verbosity>=4){
         	  std::cout << "[NMRMath::CountZeroCrossings]: bad crossing for Zc = "
@@ -339,13 +476,11 @@ namespace NMRMath {
         	  std::cout << "                               delta_v = " << delta_v << std::endl;
                }
                cntr--;      // don't count the crossing, decrement cntr 
-               i += step;   // move to next bin 
-               // delete last entry of vector since it failed the test  
-               tCross.pop_back(); 
-               vCross.pop_back(); 
-               // clear analysis arrays 
-               X.clear();
-               Y.clear();
+               i += step_size;   // move to next bin 
+               // go back an entry in the dummy vectors since we have a bad crossing   
+               index--; 
+               // clear analysis vectors 
+               ClearVectors<T1,T2>(X,Y);
                if(verbosity>=4){
         	  std::cout << "[NMRMath::CountZeroCrossings]: zero crossing counter reset to: " << cntr << std::endl;
         	  std::cout << "[NMRMath::CountZeroCrossings]: moving to index:                " << i       << std::endl;
@@ -353,10 +488,11 @@ namespace NMRMath {
                continue;
             }
             // passed t0 check 
-            i += step; // move to next bin  
+            // std::cout << "CROSSING " << cntr << "  " << t0 << std::endl;
+            i += step_size; // move to next bin  
             // set up for next data point 
-            X.clear();
-            Y.clear();
+	    ClearVectors<T1,T2>(X,Y); 
+            // index          = 0; 
             cntr_prev      = cntr; 
             t_previous     = t_current;
             v_previous     = v_current;
@@ -364,8 +500,7 @@ namespace NMRMath {
       } while ( i<(N-1) ); 
 
       if(verbosity>=3) std::cout << "[NMRMath::CountZeroCrossings]: Done." << std::endl;
-      X.clear();
-      Y.clear();
+      ClearVectors<T1,T2>(X,Y); 
 
       return cntr;   // return number of zero crossings  
    }
