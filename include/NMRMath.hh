@@ -455,7 +455,7 @@ namespace NMRMath {
                // use the fit range
                if (t_current>tMin && t_next<tMax) {
         	  cntr++;  // count the crossing 
-                  delta_v = fabs(v_current-v_next); 
+                  delta_v = std::abs(v_current-v_next); 
                   // fill vectors for fit method 
                   NPTSUseable = StoreData<T1,T2>(verbosity,i,NPTS,time,voltage,X,Y); 
                   t0 = GetTimeOfCrossing<T1,T2>(verbosity,method,NPTSUseable,X,Y,t_current,v_current,t_next,v_next); 
@@ -467,7 +467,7 @@ namespace NMRMath {
             } else {
                // don't use the fit range
                cntr++; // count the crossing 
-               delta_v = fabs(v_current-v_next); 
+               delta_v = std::abs(v_current-v_next); 
                // fill vectors for fit method 
                NPTSUseable = StoreData<T1,T2>(verbosity,i,NPTS,time,voltage,X,Y); 
                t0 = GetTimeOfCrossing<T1,T2>(verbosity,method,NPTSUseable,X,Y,t_current,v_current,t_next,v_next); 
