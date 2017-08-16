@@ -308,11 +308,11 @@ namespace NMRMath {
    //______________________________________________________________________________
    template < typename T1, typename T2 > 
    int InitializeVectors(size_t N,std::vector<T1> &X,std::vector<T2> &Y){
-      X.resize(N);
-      Y.resize(N);
+      X.reserve(N);
+      Y.reserve(N);
       for(size_t i=0;i<N;i++){
-	 X.emplace_back(0);
-	 Y.emplace_back(0);
+	 X.push_back(0);
+	 Y.push_back(0);
       }
       return 0;
    }
