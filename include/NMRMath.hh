@@ -4,7 +4,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <vector>
-#include <math.h>
+#include <cmath> 
 
 namespace NMRMath { 
    //______________________________________________________________________________
@@ -217,9 +217,18 @@ namespace NMRMath {
       }
    //______________________________________________________________________________
    template < typename TA, typename TB >
+      TA LinearInterpolationForTime(TB y,TA x0,TB y0,TA x1,TB y1){
+         // time can't be negative here, so we take the absolute values 
+         // when calculating the slope  
+	 TA b = std::abs(y-y0)/std::abs(y1-y0);
+	 TA x = x0 + b*(x1-x0);
+	 return x;
+      }
+   //______________________________________________________________________________
+   template < typename TA, typename TB >
       TB LinearInterpolation(TA x,TA x0,TB y0,TA x1,TB y1){
 	 TB b = (TB)(x-x0)/(TB)(x1-x0);
-	 TB y = y0 + b*(y1-y0);
+	 TB y = y0 + b*(y1-y0); 
 	 return y;
       }
    //______________________________________________________________________________
@@ -240,7 +249,7 @@ namespace NMRMath {
          t0 = (t_current + t_next)/2.;
       } else if (method==kLinearInterpolation){
          // method 2: get time at V = 0, linear interpolation  
-         t0 = LinearInterpolation<T2,T1>(v0,v_current,t_current,v_next,t_next);
+         t0 = LinearInterpolationForTime<T1,T2>(v0,t_current,v_current,t_next,v_next);
       } else if(method==kLeastSquares){
          // method 3: least squares fit to neighboring points
          // to find fit parameters a and b in f(x) = a + bx 
@@ -264,7 +273,7 @@ namespace NMRMath {
                                                                       << "t_max = " << X[NN-1] << "\t" 
                                                                       << "t0 = "    << t0        << std::endl;
             }
-	    t0 = LinearInterpolation<T2,T1>(v0,v_current,t_current,v_next,t_next);
+	    t0 = LinearInterpolationForTime<T1,T2>(v0,t_current,v_current,t_next,v_next);
             if(verbosity>=3) {
                std::cout << "[NMRMath::GetTimeOfCrossing]: linear interpolation: t_current = " << t_current << "\t"
                          << " t_next = " << t_next << "\t" << "t0 = " << t0 << std::endl;
@@ -480,7 +489,7 @@ namespace NMRMath {
                // go back an entry in the dummy vectors since we have a bad crossing   
                index--; 
                // clear analysis vectors 
-               ClearVectors<T1,T2>(X,Y);
+               // ClearVectors<T1,T2>(X,Y);
                if(verbosity>=4){
         	  std::cout << "[NMRMath::CountZeroCrossings]: zero crossing counter reset to: " << cntr << std::endl;
         	  std::cout << "[NMRMath::CountZeroCrossings]: moving to index:                " << i       << std::endl;
@@ -491,7 +500,7 @@ namespace NMRMath {
             // std::cout << "CROSSING " << cntr << "  " << t0 << std::endl;
             i += step_size; // move to next bin  
             // set up for next data point 
-	    ClearVectors<T1,T2>(X,Y); 
+	    // ClearVectors<T1,T2>(X,Y); 
             // index          = 0; 
             cntr_prev      = cntr; 
             t_previous     = t_current;
@@ -500,7 +509,7 @@ namespace NMRMath {
       } while ( i<(N-1) ); 
 
       if(verbosity>=3) std::cout << "[NMRMath::CountZeroCrossings]: Done." << std::endl;
-      ClearVectors<T1,T2>(X,Y); 
+      // ClearVectors<T1,T2>(X,Y); 
 
       return cntr;   // return number of zero crossings  
    }

@@ -1,5 +1,6 @@
 // Test the NMRMath library 
 
+#include <ctime> 
 #include <cstdlib> 
 #include <iostream> 
 #include <fstream> 
@@ -11,12 +12,18 @@
 template < typename T1, typename T2 > int CalculateFrequencyZC(int inputUnits,double SampleFreq,std::vector<T1> tCross,T2 &freq_full_range); 
 template < typename T1, typename T2 > int PrintToFile(std::string outpath,std::vector<T1> x,std::vector<T2> y); 
 
-int main(){
+int main(int argc,char **argv){
+
+   if(argc<2){
+      std::cout << "Usage: ./bin/Test <frequency (kHz)>" << std::endl;
+      return 1;
+   }
+
+   double inFreq = atof(argv[1])*1E+3;
 
    std::vector<unsigned long> time; 
    std::vector<double> voltage; 
 
-   double inFreq      = 30E+3; 
    double SAMPLE_FREQ = 10E+6;
    double omega       = 2.*acos(-1)*inFreq;
    double ampl        = 1.0; 
@@ -38,7 +45,7 @@ int main(){
    PrintToFile<unsigned long,double>(outpath,time,voltage);
 
    int verbosity = 0;
-   int method    = NMRMath::kMidpoint;
+   int method    = NMRMath::kLinearInterpolation;
 
    bool UseTimeRange  = true; 
    unsigned long tMin = 0;
@@ -55,11 +62,11 @@ int main(){
       vCross.push_back(-1); 
    }
 
+   int start_time = clock(); 
+
    int numCrossings = NMRMath::CountZeroCrossings(verbosity,method,SAMPLE_FREQ,inFreq,UseTimeRange,tMin,tMax,time,voltage,tCross,vCross);
 
-   std::cout << "Found " << numCrossings << " zero crossings " << std::endl; 
-
-   for(int i=0;i<numCrossings;i++) std::cout << tCross[i] << std::endl; 
+   std::cout << "Found " << numCrossings << " zero crossings " << std::endl;
 
    // clean up invalid points from initialization 
    for(int i=NC-1;i>=numCrossings;i--){
@@ -73,17 +80,23 @@ int main(){
    double outFreq=0; 
    int rc = CalculateFrequencyZC<unsigned long,double>(NMRMath::kNumSamples,SAMPLE_FREQ,tCross,outFreq);
 
-   char inf[20],outf[20],diff[20];
+   int end_time = clock();
+
+   double duration = (end_time-start_time)/( (double)CLOCKS_PER_SEC );  
+
+   char inf[20],outf[20],diff[20],dur[20];
 
    double df = (outFreq-inFreq)/0.06179;
  
    sprintf(inf ,"%.5lf Hz",inFreq );
    sprintf(outf,"%.5lf Hz",outFreq);
    sprintf(diff,"%.5lf ppb",df);
+   sprintf(dur ,"%.3lf sec",duration); 
 
    std::cout << "Input frequency:  " << inf  << std::endl; 
    std::cout << "Output frequency: " << outf << std::endl; 
    std::cout << "Difference:       " << diff << std::endl; 
+   std::cout << "Elapsed time:     " << dur  << std::endl;  
  
    return 0;
 }
